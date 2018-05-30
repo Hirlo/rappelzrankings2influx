@@ -51,9 +51,11 @@ python3 ranks.py --host **HOST** --port **PORT** --configfile **CONFIGFILE**
 ```
   
 Default values are
-**HOST** = *localhost*
-**PORT** = *8086*
-**CONFIGFILE** = *rappelz-ranking.cfg*
+```
+**HOST** = localhost
+**PORT** = 8086
+**CONFIGFILE** = rappelz-ranking.cfg
+```
 
 ### Verify metrics in Influxdb
 
@@ -63,3 +65,22 @@ Influx
 > precision rfc3339
 > select * from "server_name" order by time desc limit 10
 ```
+
+## Content of rappelz-config.cfg
+
+```
+[common]
+markets=array of markets
+limit=number of pages to process per server
+
+[influx]
+USER=user created in influxdb with write permissions
+PASSWORD=password of this user
+DBNAME=name of the database created un influxdb
+
+[url-market_as_available_in_the_array_before]
+servers=Array of servers name as seen in the original URL
+url=http://fr.rappelz.webzen.com/Community/Leaderboard/SERVER/Tout/PAGE#TopRank
+```
+
+
