@@ -8,9 +8,23 @@ import time
 from influxdb import InfluxDBClient
 import configparser
 import json
+import logging
+from logging.handlers import RotatingFileHandler
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s :: %(levelname)s :: %(message)s')
+file_handler = RotatingFileHandler('ranking.log', 'a', 1000000, 1)
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.DEBUG)
+logger.addHandler(stream_handler)
 
 def parse_args():
     """Parse the args"""
+    logger.info('parse_args')
     parser = argparse.ArgumentParser(
         description='Tool to parse and store ranking metrics from rappelz website')
     parser.add_argument('--host', type=str, required=False,
@@ -24,6 +38,7 @@ def parse_args():
 
 def url2table(url):
     """From an url given, extract only the 'rangkingTable' using beautifulsoup"""
+    logger.info('url2table')
     response = requests.get(url)
     page_html = response.text
     soup = BeautifulSoup(page_html, 'html.parser')
@@ -32,10 +47,8 @@ def url2table(url):
 
 def table2timeseries(table, measurement):
     """convert table to an array of timeseries datapoints in influx format :
-    measurement,rangs=xx,niveaux=xx,pseudonyme=xx,classe=xx,guilde=xx,serveur=xx rang=xxi,niveau=xxi timestamp
+    measurement,pseudonyme=xx,classe=xx,guilde=xx,serveur=xx rang=xxi,niveau=xxi timestamp
     measurement = table in influxDB
-    rangs = tag with rank value
-    niveaux = tag with level value
     pseudonyme = character name
     classe = job name
     guilde = guild name
@@ -44,6 +57,7 @@ def table2timeseries(table, measurement):
     niveau = field with level value, as integer
     timestamp = timestamp
     """
+    logger.info('table2timeseries')
     influxtime = date.today().strftime("%Y-%m-%dT03:00:00Z")
     points = []
 
@@ -62,12 +76,10 @@ def table2timeseries(table, measurement):
                 "measurement": measurement,
                 "time": influxtime,
                 "fields": {
-                    "rang": Rang+"i",
-                    "niveau": Niveau+"i"
+                    "rang": int(Rang),
+                    "niveau": int(Niveau)
                 },
                 "tags": {
-                    "rangs": Rang,
-                    "niveaux": Niveau,
                     "pseudonyme": Pseudonyme,
                     "classe": Classe,
                     "guilde": Guilde,
@@ -79,16 +91,19 @@ def table2timeseries(table, measurement):
 
 def timeserie2influx(host, port, user, pwd, dbname, datapoints):
     """Connect to InfluxDB and write datapoints"""
+    logger.info('timeserie2influx')
     client = InfluxDBClient(host, port, user, pwd, dbname)
     client.write_points(datapoints)
-    time.sleep(3)
+    logger.info('datapoints written')
 
 def main(host, port, configfile):
+    logger.info('main')
 
     config = configparser.ConfigParser()
     config.read(configfile)
     
     markets = json.loads(config.get("common", "markets"))
+    limit = int(config['common']['limit'])
 
     USER = config['influx']['USER']
     PASSWORD = config['influx']['PASSWORD']
@@ -100,10 +115,9 @@ def main(host, port, configfile):
         url = config[section]['url']
         
         for server in servers:
-            for page in list(range(1, 60)):
-
-
+            for page in list(range(1, limit)):
                 page_url = url.replace("SERVER",server).replace("PAGE",str(page))
+                logger.info('processing page %s', page_url)
                 timeserie2influx(host=host, port=port, user=USER, pwd=PASSWORD, dbname=DBNAME, \
                 datapoints=table2timeseries(table=url2table(url=page_url), measurement=server))
 
