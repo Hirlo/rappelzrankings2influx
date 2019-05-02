@@ -119,7 +119,7 @@ def main(host, port, configfile):
                 page_url = url.replace("SERVER",server).replace("PAGE",str(page))
                 logger.info('processing page %s', page_url)
                 timeserie2influx(host=host, port=port, user=USER, pwd=PASSWORD, dbname=DBNAME, \
-                datapoints=table2timeseries(table=url2table(url=page_url), measurement=server))
+                datapoints=table2timeseries(table=url2table(url=page_url), measurement=market))
 
 if __name__ == '__main__':
     args = parse_args()
